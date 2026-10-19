@@ -2,7 +2,8 @@
 Build analyst and judge prompts using real data from Neo4j and data folder.
 
 - Analyst prompt: Neo4j context (profile, earnings, news, peers, recommendation) + optional
-  market row (close, next_day_return, target) so the LLM is grounded in real numbers.
+  same-day market row (close, news count) so the LLM is grounded in real numbers. The
+  next-day return and target are excluded, since the label is computed from them.
 - Judge prompt: context summary + model output + optional ground truth for LLM-as-judge scoring.
 """
 
@@ -40,7 +41,7 @@ def build_analyst_prompt(
             "ticker": data_row.get("ticker"),
             "date": data_row.get("date"),
             "close": data_row.get("close"),
-            "next_day_return_pct": round(data_row.get("next_day_return", 0) * 100, 2) if data_row.get("next_day_return") is not None else None,
+            # next_day_return is never shown to the analyst: the buy/hold/sell target is derived from it
             "news_count_that_day": data_row.get("news_count"),
         }
         if include_ground_truth_in_prompt and data_row.get("target"):

@@ -63,7 +63,7 @@ A 5-stage pipeline integrates structured market data with unstructured financial
 
 ## Data Sources
 
-All datasets have been downloaded and are stored locally in `data/raw/` (gitignored due to size).
+Raw data lives in `data/raw/`. The Finnhub JSON files and the S&P 500 CSV are committed; FNSPID, FinQA and the Financial Phrasebank data are not, and `scripts/download_all_data.py` fetches them.
 
 | Dataset | Source | Description |
 |---------|--------|-------------|
@@ -262,29 +262,37 @@ For a detailed walkthrough of every script and module, see `REPO_EXPLANATION.txt
 
 ## Evaluation Results
 
-The evaluation pipeline uses an **LLM-as-judge** approach: an analyst LLM generates recommendations from Neo4j context, then a separate GPT-5.2-chat judge scores each output on four dimensions (1–5 scale).
+The evaluation uses an **LLM-as-judge** setup: an analyst LLM produces a BUY/HOLD/SELL call with an explanation, then a separate GPT-5.2-chat judge scores the output on four dimensions (1–5). Numbers below come from `reports/eval_summary.json` and `reports/hyperparam_results.json`.
 
-**Classification (50 test prompts):**
+> **Read these results with care.** The published runs have two known problems, found after the project ended:
+>
+> 1. **Label leakage.** The analyst prompt included the stock's *next-day return*, which is exactly what the BUY/HOLD/SELL label is computed from (±2% threshold). The leak is now fixed in `src/agents/prompt_builder.py`, but the saved prompts (`data/eval/prompts_*.jsonl`) and all results below were produced before the fix.
+> 2. **Very small test set.** The test split is 10 prompts covering 4 distinct stock-days (the same stock-day appears under several prompt variants), so a one-prompt change moves accuracy by 10 points.
+>
+> Re-running needs Neo4j and an OpenAI key: rebuild the prompts with `python -m src.evaluation.explainability build`, then `run` and the sweep.
 
-| Metric | Train | Test |
-|--------|-------|------|
-| Accuracy | ~52.5% | ~60% |
-| Balanced Accuracy | Low (BUY bias) | Low (BUY bias) |
+**Classification (analyst LLM vs. always-HOLD baseline):**
 
-The model exhibits a strong **BUY bias** — nearly all predictions are BUY regardless of ground truth, making it effectively a majority-class classifier. Test accuracy is inflated by COVID-era signals aligning with the BUY tendency.
+| Split | Prompts | Accuracy | Balanced accuracy | Macro F1 |
+|-------|---------|----------|-------------------|----------|
+| Train | 200 (67 stock-days) | 27.5% | 33.2% | 0.19 |
+| Test | 10 (4 stock-days) | 60.0% | 33.3% | 0.25 |
+| Always-HOLD baseline (validation, 600) | | 60.0% | 33.3% | 0.25 |
 
-**Explanation Quality (LLM judge, 1–5 scale):**
+Even with the leaked next-day return in its prompt, the analyst did not beat the trivial baseline: on the train split it over-predicts BUY while most true labels are HOLD (155 of 200).
 
-| Dimension | Score | Interpretation |
-|-----------|-------|----------------|
-| Relevance | 4–5 | Explanations are on-topic |
-| Consistency | 4–5 | Reasoning is internally coherent |
-| Faithfulness | ~1.0–1.3 | **Critically low** — model fabricates specific numbers not in context |
+**Explanation quality (LLM judge, 1–5 scale, test split):**
 
-**Faithfulness is the most important finding:** the model hallucates statistics and analyst counts not present in the provided data. This cannot be fixed by prompt engineering alone and requires RAG constraints or citation enforcement.
+| Dimension | Mean | Interpretation |
+|-----------|------|----------------|
+| Relevance | 3.8 | Explanations are on-topic |
+| Consistency | 4.4–5.0 | Reasoning is internally coherent |
+| Correctness | 3.4 | Mixed |
+| Faithfulness | 1.0–1.3 | **Critically low**: the model cites numbers and analyst counts that are not in the provided context |
 
-**Hyperparameter Tuning:**
-Best configuration (Chain-of-Thought prompt + 300 max tokens) achieved a **+10 percentage point accuracy improvement** over baseline while preserving explanation quality. Full results in `reports/hyperparam_results.json`.
+**Hyperparameter sweep:** 18 configurations (prompt strategy, max tokens, model, temperature) on the 10 test prompts. The best, Chain-of-Thought with 300 max tokens on GPT-5.2-chat, reached 70% accuracy, 66.7% balanced accuracy and 0.60 macro F1, one more correct prompt than the baseline configuration. Given the test size and the leak above, treat this as a pipeline demonstration rather than evidence of a real improvement.
+
+**Main takeaway:** the engineering (pipeline, knowledge graph, judge and sweep harness) works end to end; the LLM's recommendations are not yet reliable, and faithfulness to the retrieved context is the key problem to solve.
 
 ## Dataset Statistics
 
@@ -327,6 +335,6 @@ Best configuration (Chain-of-Thought prompt + 300 max tokens) achieved a **+10 p
 
 Educational project for DSC288 Capstone course at UC San Diego.
 
-## Contact
+## Team
 
-For questions about this project, please contact the team members through the course instructor.
+Harsh Arya, Gabrielle Despaigne, Camila Paik and Raghav Vasappanavara, DSC 288 capstone (Group 10), UC San Diego, 2026.
