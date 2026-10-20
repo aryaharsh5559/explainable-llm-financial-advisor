@@ -1,5 +1,9 @@
 # DSC288 Capstone: Multi-Agent LLM Framework for Explainable Financial Decision Support
 
+[![View the project report](https://img.shields.io/badge/View%20the%20project%20report-%E2%86%92-2ea44f?style=for-the-badge)](https://aryaharsh5559.github.io/explainable-llm-financial-advisor/)
+
+**Live site:** [aryaharsh5559.github.io/explainable-llm-financial-advisor/](https://aryaharsh5559.github.io/explainable-llm-financial-advisor/)
+
 **Team Members**: Harsh Arya, Gabrielle Despaigne, Camila Paik, Raghav Vasappanavara
 **Course**: DSC288 - Capstone Project
 **Institution**: UC San Diego
